@@ -4,8 +4,9 @@ import json
 from textwrap import dedent
 from time import time
 from uuid import uuid4
-
+from urllib.parse import urlparse
 from flask import Flask, jsonify, request
+import requests
 
 
 class Blockchain(object):
@@ -13,6 +14,7 @@ class Blockchain(object):
     def __init__(self):
         self.chain = []
         self.current_transactions = []
+        self.nodes = set()
 
         # Cria o GenesisBlock (seed) para inicializar a blockchain
         self.new_block(previous_hash=1, proof=100)
@@ -83,11 +85,11 @@ class Blockchain(object):
         proof = 0
         while self.vaild_proof(last_proof, proof) is False:
             proof += 1
-        
+
         return proof
 
     @staticmethod
-    def vaild_proof(last_proof, proof):
+    def valid_proof(last_proof, proof):
         """
         Valida a prova. 
         O hash gerado por (last_proof, proof) começa com 4 zeros?
@@ -99,6 +101,73 @@ class Blockchain(object):
         guess = f'{last_proof, proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == "0000"
+
+    def register_node(self, address):
+        """
+        Registra um novo node na lista de nodes
+        :param adress: Endereço do node. Ex.: 'http://192.168.0.102:500'
+        :return: void
+        """
+
+        parsed_url = urlparse(address)
+        self.nodes.add(parsed_url.netloc)
+
+    def validate_chain(self, chain):
+        """
+        Datermina se um blockchain é valido. O maior blockchain é dado como valid
+        :param chain: <list> Blockchain
+        :return: <bool> True se a chain é valida e false se não
+        """
+
+        last_block = chain[0]
+        index = 1
+
+        while index < len(chain):
+            block = chain[index]
+            print(f'{last_block}')
+            print(f'{block}')
+            print("\n--------------------------------\n")
+            # Checa se o hash do bloco está correto
+            if block['previous_hash'] != self.get_hash(last_block):
+                return False
+
+            # Checa se o Proof of Work está correto
+            if not self.valid_proof(last_block['proof'], block['proof']):
+                return False
+
+            last_block = block
+            index += 1
+
+        return True
+
+    def consensus(self):
+        """
+        Algorítimo de consenso, para resolver conflitos entre os nodes. Substitui a nossa chain com a maior da network.
+        :return: <bool> True se a chain for substituida, False se não
+        """
+
+        neighbor = self.nodes
+        new_chain = None
+
+        # Procuramos por chains maiores que as nossas
+        max_chain = len(self.chain)
+
+        # Pega e verifica as chains de todos os nodes vizinhos
+        for n in neighbor:
+            response = request.get(f'http://{n}/chain')
+
+            if response.status_code == 200:
+                lenght = response.json()['lenght']
+                chain = response.json()['chain']
+
+                # Checa se a chain é a maior e se ela é válida
+                if lenght > max_chain & self.validate_chain(lenght):
+                    new_chain = chain
+
+        # Repõe a chain se encontrarmos uma chain válida e maior que a nossa
+        if new_chain:
+            self.chain = new_chain
+            return True
 
 
 # Inicializa o node
@@ -127,7 +196,7 @@ def mine():
     block = blockchain.new_block(proof, previous_hash)
 
     response = {
-        'message': "Novo Bloco de Pcoin minerado",
+        'message': "Novo Bloco de Wake up Your E-Hero minerado",
         'index': block['index'],
         'transactions': block['transactions'],
         'proof': block['proof'],
@@ -164,7 +233,45 @@ def full_chain():
 
 @app.route('/', methods=['GET'])
 def pag_inicial():
-    return "PCoin"
+    return "E-Hero - Chaos Neos"
+
+
+@app.route('/nodes/register', methods=['POST'])
+def register_nodes():
+    values = request.get_json()
+
+    nodes = values.get('nodes')
+    if nodes is None:
+        return "Error, dê uma lista de nodes válida", 400
+
+    for node in nodes:
+        blockchain.register_node(node)
+
+    response = {
+        'message': "Novo(s) node(s) adicionado(s)",
+        'total_nodes': list(blockchain.nodes)
+
+    }
+    return jsonify(response), 201
+
+
+@app.route('/nodes/resolve', methods=['GET'])
+def consensus():
+    replaced = blockchain.consensus()
+
+    if replaced:
+        response = {
+            'message': 'Conflito resolvido',
+            'new_chain': blockchain.chain
+        }
+    
+    else:
+        response = {
+            'message': 'Chain atual já é autoritativa',
+            'chain': blockchain.chain
+        }
+    
+    return jsonify(response), 200
 
 
 if (__name__) == '__main__':
