@@ -111,11 +111,32 @@ blockchain = Blockchain()
 
 @app.route('/mine', methods=['GET'])
 def mine():
-    return "Minerando Bloco"
+    #Rodamos o Proof of work para pegarmos a proxima prova
+    last_block = blockchain.last_block
+    last_proof = last_block['proof']
+    proof = blockchain.proof(last_proof=last_proof)
+
+    #Recebemos uma recompensa por acharmos a prova
+    #O sender é "0" para sinalizarmos que o node foi minerado
+    blockchain.new_transaction(sender="0", recipient=node_identifier, amount=1)
+
+    #Forja um novo bloco, adicionando-o a chain
+    previous_hash = blockchain.get_hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
+
+    response = {
+        'message': "Novo Bloco de Pcoin minerado",
+        'index': block['index'],
+        'transactions': block['transactions'],
+        'proof': block['proof'],
+        'prev_hash': block['previous_hash'],
+    }
+    return jsonify(response), 200
+
 
 
 @app.route('/transactions/new', methods=['POST'])
-def newtransaction():
+def new_transaction():
     values = request.get_json()
 
     # Checa se os campos requeridos estão nas informações POSTadas
@@ -124,10 +145,10 @@ def newtransaction():
         return 'Valores Faltando', 400
 
     # Criando a transação
-    transaction = blockchain.new_transaction(
+    index = blockchain.new_transaction(
         values['sender'], values['recipient'], values['amount'])
 
-    response = {'Message': f'A transação será adicionada ao bloco {transaction}'}
+    response = {'message': f'A transação será adicionada ao bloco {index}'}
     return jsonify(response), 201
 
 
@@ -138,6 +159,10 @@ def full_chain():
         'length': len(blockchain.chain)
     }
     return jsonify(response), 200
+
+@app.route('/', methods=['GET'])
+def pag_inicial():
+    return "PCoin"
 
 
 if (__name__) == '__main__':
