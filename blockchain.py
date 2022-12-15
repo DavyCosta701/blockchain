@@ -83,6 +83,8 @@ class Blockchain(object):
         proof = 0
         while self.vaild_proof(last_proof, proof) is False:
             proof += 1
+        
+        return proof
 
     @staticmethod
     def vaild_proof(last_proof, proof):
@@ -111,16 +113,16 @@ blockchain = Blockchain()
 
 @app.route('/mine', methods=['GET'])
 def mine():
-    #Rodamos o Proof of work para pegarmos a proxima prova
+    # Rodamos o Proof of work para pegarmos a proxima prova
     last_block = blockchain.last_block
     last_proof = last_block['proof']
     proof = blockchain.proof(last_proof=last_proof)
 
-    #Recebemos uma recompensa por acharmos a prova
-    #O sender é "0" para sinalizarmos que o node foi minerado
+    # Recebemos uma recompensa por acharmos a prova
+    # O sender é "0" para sinalizarmos que o node foi minerado
     blockchain.new_transaction(sender="0", recipient=node_identifier, amount=1)
 
-    #Forja um novo bloco, adicionando-o a chain
+    # Forja um novo bloco, adicionando-o a chain
     previous_hash = blockchain.get_hash(last_block)
     block = blockchain.new_block(proof, previous_hash)
 
@@ -132,7 +134,6 @@ def mine():
         'prev_hash': block['previous_hash'],
     }
     return jsonify(response), 200
-
 
 
 @app.route('/transactions/new', methods=['POST'])
@@ -159,6 +160,7 @@ def full_chain():
         'length': len(blockchain.chain)
     }
     return jsonify(response), 200
+
 
 @app.route('/', methods=['GET'])
 def pag_inicial():
