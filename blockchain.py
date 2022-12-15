@@ -6,6 +6,7 @@ from time import time
 from uuid import uuid4
 from urllib.parse import urlparse
 from flask import Flask, jsonify, request
+import requests
 
 
 class Blockchain(object):
@@ -73,20 +74,6 @@ class Blockchain(object):
     def last_block(self):
         return self.chain[-1]
 
-    def proof(self, last_proof):
-        """
-        Algorítimo para prova da mineração. O funcionamento é simples, um número encontrado onde, se hashed com a prova anterior, revela uma nova prova com 4 (0)
-        no começo do hash.
-        :param last_proof: Última prova de cash
-        :return: <int>
-        """
-
-        proof = 0
-        while self.vaild_proof(last_proof, proof) is False:
-            proof += 1
-
-        return proof
-
     @staticmethod
     def valid_proof(last_proof, proof):
         """
@@ -100,6 +87,20 @@ class Blockchain(object):
         guess = f'{last_proof, proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == "0000"
+
+    def proof(self, last_proof):
+        """
+        Algorítimo para prova da mineração. O funcionamento é simples, um número encontrado onde, se hashed com a prova anterior, revela uma nova prova com 4 (0)
+        no começo do hash.
+        :param last_proof: Última prova de cash
+        :return: <int>
+        """
+
+        proof = 0
+        while self.valid_proof(last_proof, proof) is False:
+            proof += 1
+
+        return proof
 
     def register_node(self, address):
         """
@@ -153,7 +154,7 @@ class Blockchain(object):
 
         # Pega e verifica as chains de todos os nodes vizinhos
         for n in neighbor:
-            response = request.get(f'http://{n}/chain')
+            response = requests.get(f'http://{n}/chain')
 
             if response.status_code == 200:
                 lenght = response.json()['lenght']
@@ -263,15 +264,15 @@ def consensus():
             'message': 'Conflito resolvido',
             'new_chain': blockchain.chain
         }
-    
+
     else:
         response = {
             'message': 'Chain atual já é autoritativa',
             'chain': blockchain.chain
         }
-    
+
     return jsonify(response), 200
 
 
 if (__name__) == '__main__':
-    app.run(host='0.0.0.0', port=500)
+    app.run(host='0.0.0.0', port=5001)
