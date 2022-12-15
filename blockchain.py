@@ -232,7 +232,7 @@ def full_chain():
 
 @app.route('/', methods=['GET'])
 def pag_inicial():
-    return "E-Hero - Chaos Neos"
+    return "<center>E-Hero - Chaos Neos</center>"
 
 
 @app.route('/nodes/register', methods=['POST'])
