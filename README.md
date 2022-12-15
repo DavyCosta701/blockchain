@@ -1,0 +1,1 @@
+#Projeto Básico com o objetivo de emular um blockchain com uma criptomoeda.
