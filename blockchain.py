@@ -1,7 +1,6 @@
 import hashlib
 import time
 import json
-from textwrap import dedent
 from time import time
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -105,7 +104,7 @@ class Blockchain(object):
     def register_node(self, address):
         """
         Registra um novo node na lista de nodes
-        :param adress: Endereço do node. Ex.: 'http://192.168.0.102:500'
+        :param address: Endereço do node. Ex.: 'http://192.168.0.102:500'
         :return: void
         """
 
@@ -155,14 +154,14 @@ class Blockchain(object):
         # Pega e verifica as chains de todos os nodes vizinhos
         for n in neighbor:
             response = requests.get(f'http://{n}/chain')
-
             if response.status_code == 200:
-                lenght = response.json()['lenght']
+                length = response.json()['length']
                 chain = response.json()['chain']
 
                 # Checa se a chain é a maior e se ela é válida
-                if lenght > max_chain & self.validate_chain(lenght):
+                if length > max_chain and self.validate_chain(chain):
                     new_chain = chain
+
 
         # Repõe a chain se encontrarmos uma chain válida e maior que a nossa
         if new_chain:
@@ -239,8 +238,8 @@ def pag_inicial():
 @app.route('/nodes/register', methods=['POST'])
 def register_nodes():
     values = request.get_json()
-
     nodes = values.get('nodes')
+    nodes = nodes.split(",")
     if nodes is None:
         return "Error, dê uma lista de nodes válida", 400
 
@@ -249,8 +248,7 @@ def register_nodes():
 
     response = {
         'message': "Novo(s) node(s) adicionado(s)",
-        'total_nodes': list(blockchain.nodes)
-
+        'total_nodes': list(blockchain.nodes),
     }
     return jsonify(response), 201
 
@@ -274,5 +272,5 @@ def consensus():
     return jsonify(response), 200
 
 
-if (__name__) == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)
